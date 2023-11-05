@@ -20,12 +20,12 @@
 .align
 
 /********************************************************************
-function name: asmSwap(inpAddr,signed,size)
+function name: asmSwap(inpAddr,signed,elementSize)
 function description:
     Checks magnitude of each of two input values 
     v1 and v2 that are adjacent in memory.
     v1 is located in memory location (inpAddr)
-    v2 is located at mem location (inpAddr + size)
+    v2 is located at mem location (inpAddr + elementSize)
     
     If v1 or v2 is 0, this function immediately
     places 0 in r0 and returns to the caller.
@@ -52,9 +52,10 @@ Outputs: r0: If either input value is 0, return -1 in r0
              If neither input value is 0, and a swap was
              NOT made, return 0.
              
-         Memory: if v2>v1, swap v1 and v2.
-                 Else, if v1 or v2 is 0, OR if v1 <= v2
-                 do not modify values in memory.
+         Memory: if v1>v2:
+			swap v1 and v2.
+                 Else, if v1 or v2 is 0, OR if v1 <= v2:
+			DO NOT swap values in memory.
 NOTE: definitions: "greater than" means most positive number
 ********************************************************************/     
 .global asmSwap
@@ -71,8 +72,8 @@ function description:
     The values are sorted "in-place" (i.e. upon returning
     to the caller, the first element of the sorted array 
     is located at startAddr)
-    The function returns the ttal number of swaps that were
-    required in r0. 
+    The function returns the total number of swaps that were
+    required to put the array in order in r0. 
     
          
 Inputs: r0: startAddr: address of first value in unsorted 
