@@ -83,7 +83,7 @@ Outputs: r0: if neither input value is 0, return any NON-ZERO
          Memory: if v1>v2, swap v1 and v2.
                  Else, if v1 or v2 is 0, or if v2 >= v1
                  do not modify values in memory.
-
+NOTE: definitions: "greater than" means most positive number
 ********************************************************************/     
 .global asmSwap
 .type asmSwap,%function     
@@ -116,6 +116,7 @@ Outputs: r0: location of first element in sorted array
          Memory: The original input values will be
                  sorted and stored in memory starting
 		 at mem location startAddr
+NOTE: definitions: "greater than" means most positive number
 ********************************************************************/     
 .global asmSort
 .type asmSort,%function

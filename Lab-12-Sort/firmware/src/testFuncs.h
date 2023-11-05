@@ -68,19 +68,7 @@ extern "C" {
 // #define EXAMPLE_CONSTANT 0
 
 
-#define PLUS_INF ((0x7F800000))
-#define NEG_INF  ((0xFF800000))
-#define NAN_MASK  (~NEG_INF)
-
-#ifndef NAN
-#define NAN ((0.0/0.0))
-#endif
-
-#ifndef INFINITY
-#define INFINITY ((1.0f/0.0f))
-#define NEG_INFINITY ((-1.0f/0.0f))
-#endif
-
+#define MAX_SORT_LEN 10  // excludes trailing 0
 
     // *****************************************************************************
     // *****************************************************************************
@@ -112,12 +100,11 @@ extern "C" {
      */
 typedef struct _expectedValues
 {
-    float floatVal;
-    uint32_t intVal;
-    uint32_t signBit;
-    uint32_t biasedExp;
-    int32_t unbiasedExp; // adjusted to -126 wen -127 and not 
-    uint32_t  mantissa; // adjusted to have hidden bit when appropriate
+    int32_t expectedLen;
+    void * expectedPtr;
+    void * expectedSortedArr;
+    int32_t sign;
+    int32_t size;
 } expectedValues;
 
     
@@ -177,13 +164,17 @@ typedef struct _expectedValues
         }
      */
 
-void calcExpectedValues(
-        float input, // test number
-        expectedValues *e);   // ptr to struct where values will be stored
+// return 0 for no errors in determining expectations
+int calcExpectedValues(
+        void *inpArr, // unsorted input array from caller
+        void *outArr, // pointer where caller wants sorted output to be stored
+        int32_t sign, // input: 1 == signed, 0 == unsigned
+        int32_t size, // input: 1,2, or 4 byte elements
+        expectedValues *e); // in/out: ptr to struct where values will be stored
 
 
-void testResult(int testNum, 
-                      float testVal1, // val passed to asm in r0
+void testSort(int testNum, 
+                      void *resultArr, // val passed to asm in r0
                       float testVal2, // val passed to asm in r1
                       float*pResult, // pointer to max chosen by asm code
                       float *pGood, //ptr to correct location

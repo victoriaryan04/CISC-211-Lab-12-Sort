@@ -43,15 +43,6 @@ static char * fail = "FAIL";
 static char * oops = "OOPS";
 
 // externs defined in the assembly file:
-extern float f1,f2,fMax;
-extern uint32_t sb1,sb2,signBitMax;
-// ERROR: exp2 is the name of a built-in C function!
-// extern int32_t exp1,exp2,expMax; // adjusted UNBIASED exponent
-extern int32_t expMax; // adjusted UNBIASED exponent
-extern uint32_t mant1,mant2,mantMax; // adjusted mantissa (hidden bit added when appropriate))
-extern int32_t biasedExp1,biasedExp2,biasedExpMax;
-extern uint32_t nanValue;
-
 
 
 /* ************************************************************************** */
@@ -138,138 +129,80 @@ extern uint32_t nanValue;
     }
  */
 
-// have to play games with data types to get floats to be passed in r0 and r1
-// otherwise, assy needs to use VMOV instructions to move from s registers
-// to r registers
-// More modern C standards support these conversions, but I don't think
-// the MPLABS compiler does. At least, I couldn't make it work. --VB
-static uint32_t reinterpret_float_to_uint(float f)
+// returns num elements in array. Returns -1 if exceeds max allowed len,
+// or invalid size
+static int32_t getLength(void *pResult,int32_t size)
 {
-    float *pf = &f;
-    void * pv = (void *) pf;
-    uint32_t * pi = (uint32_t *) pv;
-    return *pi;
-}
-
-#if 0
-
-// Allows easy conversion of a bit pattern to its equivalent float value
-// More modern C standards support these conversions, but I don't think
-// the MPLABS compiler does. At least, I couldn't make it work. --VB
-static float reinterpret_uint_to_float(uint32_t ui)
-{
-    uint32_t *pu = &ui;
-    void * pv = (void *) pu;
-    float * pf = (float *) pv;
-    return *pf;
-}
-#endif
-
-// returns true for NaN
-static bool isNan(float inpVal) 
-{
-    uint32_t iFloat;
-    // reinterpret the float as 32b int so we can use bitwise operators
-    iFloat = reinterpret_float_to_uint(inpVal);
-    // check to see if exp bits are all 1, and mantissa is non-zero
-    if((iFloat&PLUS_INF) == PLUS_INF &&
-       (iFloat&NAN_MASK) != 0) {
-        return true;
+    uint8_t *bPtr = (uint8_t *)pResult;    // byte ptr
+    uint16_t *hwPtr = (uint16_t *)pResult; // half-word ptr
+    uint32_t *wPtr = (uint32_t *)pResult;  // word ptr
+    int32_t len = 0;
+    if (size == 1)
+    {
+        while(*bPtr++)
+        {
+            len += 1;
+            if (len > MAX_SORT_LEN)
+            {
+                len = -1;
+                break;
+            }
+        }
     }
-    return false;
+    else if (size == 2)
+    {
+        while(*hwPtr++)
+        {
+            len += 1;
+            if (len > MAX_SORT_LEN)
+            {
+                len = -1;
+                break;
+            }
+        }
+    }
+    else if (size == 4)
+    {
+        while(*wPtr++)
+        {
+            len += 1;
+            if (len > MAX_SORT_LEN)
+            {
+                len = -1;
+                break;
+            }
+        }
+    }
+    else
+    {
+        len = -1;
+    }
+    return len;
 }
 
-// returns +1 for +inf, -1 for -inf
-static int isInf(float inpVal) 
-{
-    uint32_t iFloat;
-    // reinterpret the float as 32b int so we can use bitwise operators
-    iFloat = reinterpret_float_to_uint(inpVal);
-    if(iFloat == PLUS_INF) {
-        return 1;
-    }
-    else if (iFloat == NEG_INF) {
-        return -1;
-    }
-    return 0;
-}
 
-
-static void check(int32_t in1, 
+// returns non-zero if there was a failure, whether forced or real
+static int32_t check(int32_t in1, 
         int32_t in2, 
         int32_t *goodCount, 
         int32_t *badCount,
+        bool forceFail, // if true, forces current test to fail
         char **pfString )
 {
-    if (in1 == in2)
+    int32_retVal = 0;
+    if ((forceFail == true) || (in1 != in2))
+    {
+        *badCount += 1;
+        *pfString = fail;  
+        retVal = 1;
+    }
+    else  //   (in1 == in2)
     {
         *goodCount += 1;
         *pfString = pass;
-    }
-    else
-    {
-        *badCount += 1;
-        *pfString = fail;        
-    }
-    return;
-}
-
-static void checkMax(expectedValues *e, 
-        int32_t unpackedValue, 
-        int32_t *goodCount, 
-        int32_t *badCount,
-        char **pfString )
-{
-    if(e->biasedExp == 255) // if NaN or +/-inf ignore mantissa
-    {
-        uint32_t val = e->intVal & 0xFF800000; // keep sign bit and exp
-        uint32_t testVal = unpackedValue & 0xFF800000;
-        check((int32_t)val,(int32_t)testVal,goodCount,badCount,pfString);         
-    }
-    else 
-    {
-        check((int32_t)e->intVal,unpackedValue,goodCount,badCount,pfString);
-    }
-    
-    return;
-}
-
-static void checkMantissa(int32_t expectedMant, 
-        int32_t unpackedMant, 
-        uint32_t ubExp,    // unbiased exponent
-        int32_t *goodCount, 
-        int32_t *badCount,
-        char **pfString )
-{
-    // if NaN or +/- inf
-    if(ubExp == 255) // only check lower 23 bits of mantissa
-    {
-        expectedMant = expectedMant && 0x7FFFFF;
-        unpackedMant = unpackedMant && 0x7FFFFF;
-        // since for NaN technically any non-zero value is valid, allow it.
-        if((expectedMant != 0 && unpackedMant != 0) || // Nan
-           (expectedMant == 0 && unpackedMant == 0))   //+/- inf
-        {
-            *goodCount += 1;
-            *pfString = pass;
-        }
-        else
-        {
-            *badCount += 1;
-            *pfString = fail;        
-        }
-    }
-    else if (expectedMant == unpackedMant) // compare all 23 bits + hidden bit
-    {
-        *goodCount += 1;
-        *pfString = pass;
-    }
-    else
-    {
-        *badCount += 1;
-        *pfString = fail;        
-    }
-    return;
+        retVal = 0;
+    }    
+    return retVal;
 }
 
 
@@ -297,161 +230,366 @@ static void checkMantissa(int32_t expectedMant,
     Refer to the example_file.h interface header for function usage details.
  */
 
-void calcExpectedValues(
-        float input, // test number
-        expectedValues *e)  // ptr to struct where values will be stored
+static int32_t copyArray(void *inpArr, void *outArr, int32_t elementSize)
 {
+    int32_t len = getLength(inpArr, outArr, elementSize);
+    if (len == -1)
+    {
+        return -1;
+    }
+    uint8_t *inp_bPtr = (uint8_t *)inpArr;    // byte ptr
+    uint16_t *inp_hwPtr = (uint16_t *)inpArr; // half-word ptr
+    uint32_t *inp_wPtr = (uint32_t *)inpArr;  // word ptr
+    uint8_t *out_bPtr = (uint8_t *)outArr;    // byte ptr
+    uint16_t *out_hwPtr = (uint16_t *)outArr; // half-word ptr
+    uint32_t *out_wPtr = (uint32_t *)outArr;  // word ptr
+    int32_t len = 0;
+    if (elementSize == 1)
+    {
+        while(*out_bPtr++ = *inp_bPtr++);
+    }
+    else if (elementSize == 2)
+    {
+        while(*out_hwPtr++ = *inp_hwPtr++);
+    }
+    else if (elementSize == 4)
+    {
+        while(*out_wPtr++ = *inp_wPtr++);
+    }
+    else
+    {
+        return -1;
+    }
+    return 0;
+}
 
-    if (true == isNan(input)) // if NaN...
+// bubble sort. Returns number of swaps.
+// assumes length of input is valid, and array is null-terminated
+static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
+{
+    uint8_t *u_bPtr = (uint8_t *)inpArr;    // byte ptr
+    uint16_t *u_hwPtr = (uint16_t *)inpArr; // half-word ptr
+    uint32_t *u_wPtr = (uint32_t *)inpArr;  // word ptr
+    int8_t *s_bPtr = (int8_t *)inpArr;    // signed byte ptr
+    int16_t *s_hwPtr = (int16_t *)inpArr; // signed half-word ptr
+    int32_t *s_wPtr = (int32_t *)inpArr;  // signed word ptr
+    int32_t numSwaps = 0;
+    int32_t totalNumSwaps = 0;
+    if ((elementSize == 1) && (sign == 0)) // unsigned bytes
     {
-        e->floatVal = NAN;
-        e->intVal = reinterpret_float_to_uint(e->floatVal);
-        e->biasedExp = 0xFF;
-        e->unbiasedExp = 0xFF-127;
-        e->signBit = e->intVal >> 31;
-        e->mantissa = 0x7FFFFF; // It can be any non-0 value, we'll use all 1's.
-    }
-    else if (true == isInf(input))   // if +/- inf
-    {
-        e->floatVal = input;
-        e->intVal = reinterpret_float_to_uint(e->floatVal);
-        e->biasedExp = 0xFF;
-        e->unbiasedExp = 0xFF-127;
-        e->signBit = e->intVal >> 31; // could be +/- inf
-        e->mantissa = 0x0;      // for +/- inf, this must be zero 
-    }
-    else // either subnormal or normal float
-    {
-        e->floatVal = input;
-        e->intVal = reinterpret_float_to_uint(e->floatVal);
-        e->signBit = e->intVal >> 31; // could be +/- inf
-        e->biasedExp = (e->intVal >>23) & 0xFF;
-        e->unbiasedExp = e->biasedExp - 127;
-        e->mantissa = e->intVal & 0x7FFFFF; // mask off LSB 23 bits
-        if(e->unbiasedExp == -127) // then this is a subnormal number
+        do
         {
-            // adjust to -126, and skip adding hidden bit to mantissa
-            e->unbiasedExp = -126;
-        }
-        else // not subnormal; just a run-of-the-mill float...
-        {
-            // add hidden bit to mantissa
-            e->mantissa = e->mantissa | 0x800000; // add  missing bit    
-        }
+            numSwaps = 0;
+            while((*u_bPtr!= 0) &&  (*(u_bPtr+1)!= 0))
+            {
+                swapped = 0;
+                if (*(u_bPtr+1) > *u_bPtr)
+                {
+                    uint8_t tmp = *(u_bPtr+1);
+                    *(u_bPtr+1) = *u_bPtr;
+                    *u_bPtr = tmp;
+                    numSwaps++;
+                }
+            }
+            totalNumSwaps += numSwaps;
+        } while numSwaps != 0;
+
     }
+    else if ((elementSize == 1) && (sign == 1)) // signed bytes
+    {
+        do
+        {
+            numSwaps = 0;
+            while((*s_bPtr!= 0) &&  (*(s_bPtr+1)!= 0))
+            {
+                swapped = 0;
+                if (*(s_bPtr+1) > *s_bPtr)
+                {
+                    int8_t tmp = *(s_bPtr+1);
+                    *(s_bPtr+1) = *s_bPtr;
+                    *s_bPtr = tmp;
+                    numSwaps++;
+                }
+            }
+            totalNumSwaps += numSwaps;
+        } while numSwaps != 0;
+    }
+    else if ((elementSize == 2) && (sign == 0)) // unsigned half words
+    {
+        do
+        {
+            numSwaps = 0;
+            while((*u_hwPtr!= 0) &&  (*(u_hwPtr+1)!= 0))
+            {
+                swapped = 0;
+                if (*(u_hwPtr+1) > *u_hwPtr)
+                {
+                    uint16_t tmp = *(u_hwPtr+1);
+                    *(u_hwPtr+1) = *u_hwPtr;
+                    *u_hwPtr = tmp;
+                    numSwaps++;
+                }
+            }
+            totalNumSwaps += numSwaps;
+        } while numSwaps != 0;
+
+    }
+    else if ((elementSize == 2) && (sign == 1)) // signed half words
+    {
+        do
+        {
+            numSwaps = 0;
+            while((*s_hwPtr!= 0) &&  (*(s_hwPtr+1)!= 0))
+            {
+                swapped = 0;
+                if (*(s_hwPtr+1) > *s_hwPtr)
+                {
+                    int16_t tmp = *(s_hwPtr+1);
+                    *(s_hwPtr+1) = *s_hwPtr;
+                    *s_hwPtr = tmp;
+                    numSwaps++;
+                }
+            }
+            totalNumSwaps += numSwaps;
+        } while numSwaps != 0;
+    }
+
+    // words
+    
+    else if ((elementSize == 4) && (sign == 0)) // unsigned words
+    {
+        do
+        {
+            numSwaps = 0;
+            while((*u_wPtr!= 0) &&  (*(u_wPtr+1)!= 0))
+            {
+                swapped = 0;
+                if (*(u_wPtr+1) > *u_wPtr)
+                {
+                    uint32_t tmp = *(u_wPtr+1);
+                    *(u_wPtr+1) = *u_wPtr;
+                    *u_wPtr = tmp;
+                    numSwaps++;
+                }
+            }
+            totalNumSwaps += numSwaps;
+        } while numSwaps != 0;
+
+    }
+    else if ((elementSize == 4) && (sign == 1)) // signed words
+    {
+        do
+        {
+            numSwaps = 0;
+            while((*s_wPtr!= 0) &&  (*(s_wPtr+1)!= 0))
+            {
+                swapped = 0;
+                if (*(s_wPtr+1) > *s_wPtr)
+                {
+                    int32_t tmp = *(s_wPtr+1);
+                    *(s_wPtr+1) = *s_wPtr;
+                    *s_wPtr = tmp;
+                    numSwaps++;
+                }
+            }
+            totalNumSwaps += numSwaps;
+        } while numSwaps != 0;
+    }
+    else
+    {
+        return -1;
+    }
+    return numSwaps;
+}
+// return non-zero if arrays don't match
+static int32_t compareArrays(void *expArr,
+        void *testArr,
+        int32_t elementSize,
+        int32_t *goodCount, 
+        int32_t *badCount,
+        bool forceFail, // if true, forces current test to fail
+        char **pfString )
+{
+    uint8_t *exp_bPtr = (uint8_t *)expArr;    // byte ptr
+    uint16_t *exp_hwPtr = (uint16_t *)expArr; // half-word ptr
+    uint32_t *exp_wPtr = (uint32_t *)expArr;  // word ptr
+    uint8_t *test_bPtr = (uint8_t *)testArr;    // byte ptr
+    uint16_t *test_hwPtr = (uint16_t *)testArr; // half-word ptr
+    uint32_t *test_wPtr = (uint32_t *)testArr;  // word ptr
+    int32_t retVal = 0;
+    if (forceFail == true)
+    {
+        *badCount += 1;
+        *pfString = fail;  
+        retVal = -1;
+    }
+    else if (elementSize == 1)  // compare bytes
+    {
+        while(1)
+        {
+            // if not equal, signal error and break out of loop
+            if (*exp_bPtr != *test_bPtr)
+            {
+                retVal = 1;
+                break;
+            }
+            if (*exp_bPtr == 0) // if reached the end, break out
+            {
+                break;
+            }
+            exp_bPtr += 1;
+            test_bPtr += 1;
+        } 
+    }
+    else if (elementSize == 2)  // compare halfwords
+    {
+        while(1)
+        {
+            // if not equal, signal error and break out of loop
+            if (*exp_bPtr != *test_bPtr)
+            {
+                retVal = 1;
+                break;
+            }
+            if (*exp_bPtr == 0) // if reached the end, break out
+            {
+                break;
+            }
+            exp_bPtr += 1;
+            test_bPtr += 1;
+        } 
         
-    return;
+    }
+    else if (elementSize == 4) // compare words
+    {
+        while(1)
+        {
+            // if not equal, signal error and break out of loop
+            if (*exp_bPtr != *test_bPtr)
+            {
+                retVal = 1;
+                break;
+            }
+            if (*exp_bPtr == 0) // if reached the end, break out
+            {
+                break;
+            }
+            exp_bPtr += 1;
+            test_bPtr += 1;
+        } 
+        
+    }
+    else
+    {
+        // something is wrong
+        retVal = -2;
+    }
+    
+    if (retVal != 0)
+    {
+        *badCount += 1;
+        *pfString = fail;  
+    }
+    else 
+    {
+        *goodCount += 1;
+        *pfString = pass;
+    }    
+    
+    return retVal;
+}
+
+
+
+// return -1 if invalid input
+static int32_t calcExpectedValues(
+        void *inpArr, // unsorted input array from caller
+        void *outArr, // pointer where caller wants sorted output to be stored
+        int32_t sign, // input: 1 == signed, 0 == unsigned
+        int32_t size, // input: 1,2, or 4 byte elements
+        expectedValues *e) // in/out: ptr to struct where values will be stored
+{
+    // copy input to output
+    
+    // sort the values in the output array
+    
+    return 0;
 }
 
 
 
 void testResult(int testNum, 
-                      float testVal1, // val passed to asm in r0
-                      float testVal2, // val passed to asm in r1
-                      float*pResult, // pointer to max chosen by asm code
-                      float *pGood, //ptr to correct location
-                      int32_t* passCnt,
-                      int32_t* failCnt,
-                      volatile bool * txComplete)
-{
-    float asmResult = *pResult;
-    uint32_t iMax = reinterpret_float_to_uint(fMax);
-
-    // int asmInf = isInf(asmResult);  // did the asm code return +/- inf?
-    // bool asmNan = isNan(asmResult); // did the asm code return NaN?
-    int inp1Inf = isInf(testVal1);  // was test input 1 +/- inf?
-    bool inp1Nan = isNan(testVal1); // was test input 1 NaN?
-    int inp2Inf = isInf(testVal2);  // was test input 2 +/- inf?
-    bool inp2Nan = isNan(testVal2); // was test input 1 NaN?
-    
+                void *inpArr, // copy of unsorted input array sent to asm
+                void * expectedResultAddr, // pointer to sorted output arr from asm
+                void * pResult, // ptr returned by asm
+                int32_t sign, // whether inp arr was signed or unsigned
+                int32_t size, // num butes for each element in array: 1,2, or 4
+                void *pGood, //ptr where asm was told to get input and store output
+                int32_t* passCnt,
+                int32_t* failCnt,
+                volatile bool * txComplete)
+{    
     expectedValues e;
 
     // place to store pass/fail strings
     char * ptrCheck = oops;
-    char * maxCheck = oops;
-    char * sbCheck = oops;
-    char * biasedExpCheck = oops;
-    char * unbiasedExpCheck = oops;
-    char * mantCheck = oops;
+    char * lenCheck = oops;
+    char * sortCheck = oops;
 
     *passCnt = 0;
     *failCnt = 0;
+    int32_t err = calcExpectedValues(
+            (void *) inpArr,
+            (void *) sortedInpArr, 
+            sign,
+            size, 
+            &e);
     
+    // set force fail flag to false. If certain tests fail, 
+    // remaining tests are forced to fail
+    bool forceFail = false;
+    int32_t err = 0;
     
-    //int32_t  goodExponent = ((iGoodMax >>23) & 0xFF) - 127;
-    //if goodExponent == -127
-    //uint32_t goodMantissa = iGoodMax & 0x7FFFFF;
-
-    // load the expected results struct with the expected answers
-    if (inp1Nan || inp2Nan) // if either or both test inputs were NaN ...
+    // test that the pointer returned by asmSort points to value passed to asm
+    err = check((int32_t)expectedResultAddr,(int32_t)pResult,forceFail,passCnt,failCnt,&ptrCheck);
+    if (err != 0) // force remaining tests to fail cuz not sure where sorted list was written
     {
-        calcExpectedValues(NAN, &e);
+        forceFail = true;
     }
-    else if ((inp1Inf ==1) || (inp2Inf == 1)) // if either input was +inf
-    {
-        calcExpectedValues(INFINITY, &e);
-    }
-    else if (inp1Inf == -1) // if f1 was -inf, then assume f2 was max
-    {
-        if (inp2Inf == -1)
-        {
-            calcExpectedValues(NEG_INFINITY, &e); // could probably use testVal2 to simplify this...
-        }
-        else
-        {
-            calcExpectedValues(testVal2, &e);
-        }
-    }
-    else if (inp2Inf == -1)  // else if f2 was -inf, then assume f1 was max
-    {
-        calcExpectedValues(testVal1, &e);
-    }    
-    else if(testVal1<testVal2) // else, check to see which was larger
-    {
-        calcExpectedValues(testVal2, &e);
-    }
-    else // either testVal1 is greater, or they are equal, or something is horribly wrong
-    {
-        calcExpectedValues(testVal1, &e);
-    }    
     
-    // test that the pointer returned by asmFmax points to global fMax
-    check((int32_t)(&fMax),(int32_t)pResult,passCnt,failCnt,&ptrCheck);
-
-    // check whether the right value was chosen
-    checkMax(&e,(int32_t)iMax,passCnt,failCnt,&maxCheck);
+    // test to see if sorted array len matches expectations
+    int32_t asmLength = -1;
+    if (forceFail == false)
+    {
+        // return num elements excluding trailing 0. 
+        // -1 if exceeds max allowable length
+        asmLength = getLength(pResult,size); // return num elements excluding trailing 0
+    }
+    err = check(e.expectedLen,asmLength,passCnt,failCnt,forceFail,&lenCheck );
+    // force remaining tests to fail cuz can't compare different len arrays
+    if (err != 0) 
+    {
+        forceFail = true;
+    }
     
-    // check the unpacked values
-    check(e.signBit,signBitMax,passCnt,failCnt,&sbCheck);
-    check(e.biasedExp,biasedExpMax,passCnt,failCnt,&biasedExpCheck);
-    check(e.unbiasedExp,expMax,passCnt,failCnt,&unbiasedExpCheck);
-    
-    // if expMax is 255, needs special handling.
-    // In that case, allow mantissa with or without hidden bit set.
-    checkMantissa(e.mantissa,mantMax,e.biasedExp,passCnt,failCnt,&mantCheck);
-       
+    compareArrays(&e.expectedSortedArr[0],
+            pResult,
+            passCnt,
+            failCnt,
+            forceFail,
+            &sortCheck );
+      
     snprintf((char*)txBuffer, MAX_PRINT_LEN,
             "========= Test Number: %d\r\n"
-            "input1:       %8.4e; input2:     %8.4e \r\n"
-            "hex inp1:     0x%08lx; hex inp2: 0x%08lx\r\n"
-            "%s: expected max: %8.4e; asm result: %8.4e\r\n"
             "%s: pointer check: expected:  0x%" PRIXPTR "; actual: 0x%" PRIXPTR "\r\n"
-            "%s: sign bit expected: %ld; actual: %ld\r\n"
-            "%s: biased expnt expected:   %ld; actual: %ld\r\n"
-            "%s: unbiased expnt expected: %ld; actual: %ld\r\n"
-            "%s: mantissa expected: 0x%08lx; actual: 0x%08lx\r\n"
+            "%s: length expected: %ld; actual: %ld\r\n"
+            "%s: Result of sorted list comparison\r\n"
             "tests passed: %ld; tests failed: %ld \r\n"
             "\r\n",
             testNum,
-            testVal1,testVal2,
-            reinterpret_float_to_uint(testVal1),
-            reinterpret_float_to_uint(testVal2),
-            maxCheck,e.floatVal,asmResult,
-            ptrCheck,(uintptr_t)(&fMax), (uintptr_t)pResult,
-            sbCheck,e.signBit,signBitMax,
-            biasedExpCheck,e.biasedExp,biasedExpMax,
-            unbiasedExpCheck,e.unbiasedExp,expMax,
-            mantCheck,e.mantissa,mantMax,
+            ptrCheck,(uintptr_t)(&expectedResultAddr), (uintptr_t)pResult,
+            lenCheck,e.expectedLen,asmLength,
+            sortCheck,
             *passCnt,*failCnt); 
     
     printAndWait((char*)txBuffer,txComplete);
