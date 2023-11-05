@@ -75,18 +75,6 @@
 
 #define MAX_PRINT_LEN 1000
 
-#define PLUS_INF ((0x7F800000))
-#define NEG_INF  ((0xFF800000))
-#define NAN_MASK  (~NEG_INF)
-
-#ifndef NAN
-#define NAN ((0.0/0.0))
-#endif
-
-#ifndef INFINITY
-#define INFINITY ((1.0f/0.0f))
-#define NEG_INFINITY ((-1.0f/0.0f))
-#endif
 
 
 static volatile bool isRTCExpired = false;
@@ -106,7 +94,8 @@ static uint8_t uartTxBuffer[MAX_PRINT_LEN] = {0};
 //
 // Function signature
 // For this lab, return the larger of the two floating point values passed in.
-extern float * asmFmax(uint32_t, uint32_t);
+extern int32_t asmSwap(void *, int32_t sign, int32_t elemSize);
+extern int32_t asmSort(void *, int32_t sign, int32_t elemSize);
 
 // externs defined in the assembly file:
 extern float f1,f2,fMax;
@@ -192,11 +181,38 @@ int main ( void )
     int32_t totalPassCount = 0;
     int32_t totalFailCount = 0;
     int32_t totalTestCount = 0;
-    int iteration = 0;   
-    int maxIterations = sizeof(tc)/sizeof(tc[0]);
+    int32_t numTestCases = 0;
     
     while ( true )
     {
+        int32_t swapTotalTestCount = 0;
+        int32_t swapTotalPassCount = 0;
+        int32_t swapTotalFailCount = 0;
+        numTestCases = sizeof(swapTestCases)/sizeof(swapTestCasses[0]);
+        for(int testCase = 0; testCase<numTestCases; ++testCase)
+        {
+            LED0_Toggle();
+            // reset the state variables for the timer and serial port funcs
+            isRTCExpired = false;
+            isUSARTTxComplete = false;
+            
+            // reset the counters for this test pass
+            passCount = 0;
+            failCount = 0;
+            
+            // Get the value for this test case
+            
+            // call the func
+            
+            // test the result
+            
+            // print the result
+            
+            // wait for the toggle timer to expire
+            while(isRTCExpired == false);
+        } // end: for (testCase = 0; ...)
+        
+        //OLD CODE!!!!!!!!!!!!!
         if (isRTCExpired == true)
         {
             isRTCExpired = false;
