@@ -102,7 +102,7 @@ extern "C" {
 typedef struct _expectedValues
 {
     int32_t expectedLen;
-    void * expectedPtr;
+    int32_t expectedNumSwaps;
     void * expectedSortedArr;
     int32_t sign;
     int32_t size;
@@ -166,7 +166,7 @@ typedef struct _expectedValues
      */
 
 
-// function used to test sort functionality of student's asmSwap implementation
+// function used to test functionality of student's asmSwap implementation
 // 
 void testAsmSwap(int testNum, 
         char *desc, // optional description of test for printout
@@ -182,7 +182,7 @@ void testAsmSwap(int testNum,
 //
 //
 //
-// function used to test sort functionality of student's asmSort implementation
+// function used to test functionality of student's asmSort implementation
 void testAsmSort(int testNum, 
                 char *desc, // optional description of test for printout
                 void *inpArr, // unmodified copy of unsorted input array sent to asm

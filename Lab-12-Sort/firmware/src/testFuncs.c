@@ -134,13 +134,13 @@ static char * oops = "OOPS";
 
 // returns num elements in array. Returns -1 if exceeds max allowed len,
 // or invalid size
-static int32_t getLength(void *pResult,int32_t size)
+static int32_t getLength(void *pResult,int32_t elementSize)
 {
     uint8_t *bPtr = (uint8_t *)pResult;    // byte ptr
     uint16_t *hwPtr = (uint16_t *)pResult; // half-word ptr
     uint32_t *wPtr = (uint32_t *)pResult;  // word ptr
     int32_t len = 0;
-    if (size == 1) // bytes
+    if (elementSize == 1) // bytes
     {
         while(*bPtr++)
         {
@@ -152,7 +152,7 @@ static int32_t getLength(void *pResult,int32_t size)
             }
         }
     }
-    else if (size == 2) // half-words
+    else if (elementSize == 2) // half-words
     {
         while(*hwPtr++)
         {
@@ -164,7 +164,7 @@ static int32_t getLength(void *pResult,int32_t size)
             }
         }
     }
-    else if (size == 4)  // words
+    else if (elementSize == 4)  // words
     {
         while(*wPtr++)
         {
@@ -192,7 +192,7 @@ static int32_t check(int32_t in1,
         bool forceFail, // if true, forces current test to fail
         char **pfString )
 {
-    int32_retVal = 0;
+    int32_t retVal = 0;
     if ((forceFail == true) || (in1 != in2))
     {
         *badCount += 1;
@@ -208,9 +208,10 @@ static int32_t check(int32_t in1,
     return retVal;
 }
 
+// return -1 if there's a problem, otherwise, return length (excluding trailing 0)
 static int32_t copyArray(void *inpArr, void *outArr, int32_t elementSize)
 {
-    int32_t len = getLength(inpArr, outArr, elementSize);
+    int32_t len = getLength(inpArr, elementSize);
     if (len == -1)
     {
         return -1;
@@ -221,24 +222,24 @@ static int32_t copyArray(void *inpArr, void *outArr, int32_t elementSize)
     uint8_t *out_bPtr = (uint8_t *)outArr;    // byte ptr
     uint16_t *out_hwPtr = (uint16_t *)outArr; // half-word ptr
     uint32_t *out_wPtr = (uint32_t *)outArr;  // word ptr
-    int32_t len = 0;
+
     if (elementSize == 1)
     {
-        while(*out_bPtr++ = *inp_bPtr++);
+        while((*out_bPtr++ = *inp_bPtr++));
     }
     else if (elementSize == 2)
     {
-        while(*out_hwPtr++ = *inp_hwPtr++);
+        while((*out_hwPtr++ = *inp_hwPtr++));
     }
     else if (elementSize == 4)
     {
-        while(*out_wPtr++ = *inp_wPtr++);
+        while((*out_wPtr++ = *inp_wPtr++));
     }
     else
     {
         return -1;
     }
-    return 0;
+    return len;
 }
 
 // bubble sort. Returns number of swaps.
@@ -258,9 +259,10 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
         do
         {
             numSwaps = 0;
+            // reset pointer to start of the array
+            u_bPtr = (uint8_t *)inpArr;
             while((*u_bPtr!= 0) &&  (*(u_bPtr+1)!= 0))
             {
-                swapped = 0;
                 if (*(u_bPtr+1) > *u_bPtr)
                 {
                     uint8_t tmp = *(u_bPtr+1);
@@ -270,7 +272,7 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
                 }
             }
             totalNumSwaps += numSwaps;
-        } while numSwaps != 0;
+        } while (numSwaps != 0);
 
     }
     else if ((elementSize == 1) && (sign == 1)) // signed bytes
@@ -278,9 +280,10 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
         do
         {
             numSwaps = 0;
+            // reset pointer to start of the array
+            s_bPtr = (int8_t *)inpArr;
             while((*s_bPtr!= 0) &&  (*(s_bPtr+1)!= 0))
             {
-                swapped = 0;
                 if (*(s_bPtr+1) > *s_bPtr)
                 {
                     int8_t tmp = *(s_bPtr+1);
@@ -290,16 +293,17 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
                 }
             }
             totalNumSwaps += numSwaps;
-        } while numSwaps != 0;
+        } while (numSwaps != 0);
     }
     else if ((elementSize == 2) && (sign == 0)) // unsigned half words
     {
         do
         {
             numSwaps = 0;
+            // reset pointer to start of the array
+            u_hwPtr = (uint16_t *)inpArr;
             while((*u_hwPtr!= 0) &&  (*(u_hwPtr+1)!= 0))
             {
-                swapped = 0;
                 if (*(u_hwPtr+1) > *u_hwPtr)
                 {
                     uint16_t tmp = *(u_hwPtr+1);
@@ -309,7 +313,7 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
                 }
             }
             totalNumSwaps += numSwaps;
-        } while numSwaps != 0;
+        } while (numSwaps != 0);
 
     }
     else if ((elementSize == 2) && (sign == 1)) // signed half words
@@ -317,9 +321,10 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
         do
         {
             numSwaps = 0;
+            // reset pointer to start of the array
+            s_hwPtr = (int16_t *)inpArr;
             while((*s_hwPtr!= 0) &&  (*(s_hwPtr+1)!= 0))
             {
-                swapped = 0;
                 if (*(s_hwPtr+1) > *s_hwPtr)
                 {
                     int16_t tmp = *(s_hwPtr+1);
@@ -329,7 +334,7 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
                 }
             }
             totalNumSwaps += numSwaps;
-        } while numSwaps != 0;
+        } while (numSwaps != 0);
     }
 
     // words
@@ -339,9 +344,10 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
         do
         {
             numSwaps = 0;
+            // reset pointer to start of the array
+            u_wPtr = (uint32_t *)inpArr;
             while((*u_wPtr!= 0) &&  (*(u_wPtr+1)!= 0))
             {
-                swapped = 0;
                 if (*(u_wPtr+1) > *u_wPtr)
                 {
                     uint32_t tmp = *(u_wPtr+1);
@@ -351,7 +357,7 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
                 }
             }
             totalNumSwaps += numSwaps;
-        } while numSwaps != 0;
+        } while (numSwaps != 0);
 
     }
     else if ((elementSize == 4) && (sign == 1)) // signed words
@@ -359,9 +365,10 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
         do
         {
             numSwaps = 0;
+            // reset pointer to start of the array
+            s_wPtr = (int32_t *)inpArr;
             while((*s_wPtr!= 0) &&  (*(s_wPtr+1)!= 0))
             {
-                swapped = 0;
                 if (*(s_wPtr+1) > *s_wPtr)
                 {
                     int32_t tmp = *(s_wPtr+1);
@@ -371,7 +378,7 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
                 }
             }
             totalNumSwaps += numSwaps;
-        } while numSwaps != 0;
+        } while (numSwaps != 0);
     }
     else
     {
@@ -427,17 +434,17 @@ static int32_t compareArrays(void *expArr,
         while(1)
         {
             // if not equal, signal error and break out of loop
-            if (*exp_bPtr != *test_bPtr)
+            if (*exp_hwPtr != *test_hwPtr)
             {
                 retVal = 1;
                 break;
             }
-            if (*exp_bPtr == 0) // if reached the end, break out
+            if (*exp_hwPtr == 0) // if reached the end, break out
             {
                 break;
             }
-            exp_bPtr += 1;
-            test_bPtr += 1;
+            exp_hwPtr += 1;
+            test_hwPtr += 1;
         } 
         
     }
@@ -446,17 +453,17 @@ static int32_t compareArrays(void *expArr,
         while(1)
         {
             // if not equal, signal error and break out of loop
-            if (*exp_bPtr != *test_bPtr)
+            if (*exp_wPtr != *test_wPtr)
             {
                 retVal = 1;
                 break;
             }
-            if (*exp_bPtr == 0) // if reached the end, break out
+            if (*exp_wPtr == 0) // if reached the end, break out
             {
                 break;
             }
-            exp_bPtr += 1;
-            test_bPtr += 1;
+            exp_wPtr += 1;
+            test_wPtr += 1;
         } 
         
     }
@@ -487,13 +494,28 @@ static int32_t calcExpectedValues(
         void *inpArr, // unsorted input array from caller
         void *outArr, // pointer where caller wants sorted output to be stored
         int32_t sign, // input: 1 == signed, 0 == unsigned
-        int32_t size, // input: 1,2, or 4 byte elements
+        int32_t elementSize, // input: 1,2, or 4 byte elements
         expectedValues *e) // in/out: ptr to struct where values will be stored
 {
-    // copy input to output
+
+    // don't want to destroy original so copy input to another array that will be sorted
+    e->expectedLen = copyArray(inpArr, outArr, elementSize);
+    if(e->expectedLen < 0)
+    {
+        e->expectedSortedArr = (void *) 0;
+        e->expectedNumSwaps = -1;
+        return -1;
+    }
+
+    e->expectedSortedArr = outArr;
     
     // sort the values in the output array
-    
+    e->expectedNumSwaps = sortArray(outArr, sign, elementSize);
+    if(e->expectedNumSwaps < 0)
+    {
+        return -1;
+    }
+
     return 0;
 }
 
@@ -521,7 +543,7 @@ static int32_t calcExpectedValues(
   @Remarks
     Refer to the example_file.h interface header for function usage details.
  */
-// function used to test sort functionality of student's asmSwap implementation
+// function used to test functionality of student's asmSwap implementation
 // 
 void testAsmSwap(int testNum, 
         char *desc, // optional description of test for printout
@@ -538,6 +560,8 @@ void testAsmSwap(int testNum,
 
 
 
+// function used to test functionality of student's asmSort implementation
+// 
 void testAsmSort(int testNum, 
                 char *desc, // optional description of test for printout
                 void *inpArr, // unmodified copy of unsorted input array sent to asm
@@ -554,7 +578,7 @@ void testAsmSort(int testNum,
     expectedValues e;
 
     // place to store pass/fail strings
-    char * ptrCheck = oops;
+    char * swapCheck = oops;
     char * lenCheck = oops;
     char * sortCheck = oops;
 
@@ -562,7 +586,7 @@ void testAsmSort(int testNum,
     *failCnt = 0;
     int32_t err = calcExpectedValues(
             (void *) inpArr,
-            (void *) sortedInpArr, 
+            (void *) goodSortedArray, 
             sign,
             size, 
             &e);
@@ -570,32 +594,24 @@ void testAsmSort(int testNum,
     // set force fail flag to false. If certain tests fail, 
     // remaining tests are forced to fail
     bool forceFail = false;
-    int32_t err = 0;
-    
-    // test that the pointer returned by asmSort points to value passed to asm
-    err = check((int32_t)expectedResultAddr,(int32_t)pResult,forceFail,passCnt,failCnt,&ptrCheck);
-    if (err != 0) // force remaining tests to fail cuz not sure where sorted list was written
-    {
-        forceFail = true;
-    }
     
     // test to see if sorted array len matches expectations
     int32_t asmLength = -1;
-    if (forceFail == false)
-    {
-        // return num elements excluding trailing 0. 
-        // -1 if exceeds max allowable length
-        asmLength = getLength(pResult,size); // return num elements excluding trailing 0
-    }
+    // return num elements excluding trailing 0. 
+    // -1 if exceeds max allowable length
+    asmLength = getLength(pResult,size); // return num elements excluding trailing 0
     err = check(e.expectedLen,asmLength,passCnt,failCnt,forceFail,&lenCheck );
-    // force remaining tests to fail cuz can't compare different len arrays
-    if (err != 0) 
+    if (err != 0)
     {
+        // force remaining tests to fail cuz can't compare different len arrays
         forceFail = true;
     }
+
+    check(e.expectedNumSwaps,numSwaps,passCnt,failCnt,forceFail,&swapCheck);
     
-    compareArrays(&e.expectedSortedArr[0],
+    compareArrays(e.expectedSortedArr,
             pResult,
+            e.size,
             passCnt,
             failCnt,
             forceFail,
@@ -603,14 +619,14 @@ void testAsmSort(int testNum,
       
     snprintf((char*)txBuffer, MAX_PRINT_LEN,
             "========= Test Number: %d\r\n"
-            "%s: pointer check: expected:  0x%" PRIXPTR "; actual: 0x%" PRIXPTR "\r\n"
-            "%s: length expected: %ld; actual: %ld\r\n"
+            "%s: length expected:    %ld; actual: %ld\r\n"
+            "%s: num swaps expected: %ld; actual: %ld\r\n"
             "%s: Result of sorted list comparison\r\n"
             "tests passed: %ld; tests failed: %ld \r\n"
             "\r\n",
             testNum,
-            ptrCheck,(uintptr_t)(&expectedResultAddr), (uintptr_t)pResult,
             lenCheck,e.expectedLen,asmLength,
+            swapCheck,e.expectedNumSwaps,numSwaps,
             sortCheck,
             *passCnt,*failCnt); 
     
