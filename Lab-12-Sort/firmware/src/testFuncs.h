@@ -68,7 +68,8 @@ extern "C" {
 // #define EXAMPLE_CONSTANT 0
 
 
-#define MAX_SORT_LEN 10  // excludes trailing 0
+#define MAX_SORT_LEN 10  // excludes trailing 0, so max array size is this + 1
+#define MAX_SORT_ARRAY_SIZE ((MAX_SORT_LEN+1))
 
     // *****************************************************************************
     // *****************************************************************************
@@ -164,23 +165,36 @@ typedef struct _expectedValues
         }
      */
 
-// return 0 for no errors in determining expectations
-int calcExpectedValues(
-        void *inpArr, // unsorted input array from caller
-        void *outArr, // pointer where caller wants sorted output to be stored
-        int32_t sign, // input: 1 == signed, 0 == unsigned
-        int32_t size, // input: 1,2, or 4 byte elements
-        expectedValues *e); // in/out: ptr to struct where values will be stored
 
+// function used to test sort functionality of student's asmSwap implementation
+// 
+void testAsmSwap(int testNum, 
+        char *desc, // optional description of test for printout
+        void * v1,
+        void * v2,
+        int32_t sign, // 1 ==  signed, 0 == unsigned
+        int32_t elementSize,  // valid values 1,2,4 bytes
+        int32_t* passCnt,
+        int32_t* failCnt,
+        volatile bool * txComplete);
 
-void testSort(int testNum, 
-                      void *resultArr, // val passed to asm in r0
-                      float testVal2, // val passed to asm in r1
-                      float*pResult, // pointer to max chosen by asm code
-                      float *pGood, //ptr to correct location
-                      int32_t* passCnt,
-                      int32_t* failCnt,
-                      volatile bool * txComplete);
+//
+//
+//
+//
+// function used to test sort functionality of student's asmSort implementation
+void testAsmSort(int testNum, 
+                char *desc, // optional description of test for printout
+                void *inpArr, // unmodified copy of unsorted input array sent to asm
+                // next ptr is where a copy of the unsorted test case input was made
+                // The asm code is supposed to sort them in-place at this same location
+                void * pResult,
+                int32_t sign, // whether inp arr was signed or unsigned
+                int32_t size, // num bytes for each element in array: 1,2, or 4
+                int32_t numSwaps, // num swaps reported by asmSort to order the input array
+                int32_t* passCnt,
+                int32_t* failCnt,
+                volatile bool * txComplete);
 
 
     /* Provide C++ Compatibility */

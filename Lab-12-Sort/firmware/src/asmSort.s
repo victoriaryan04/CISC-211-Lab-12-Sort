@@ -77,9 +77,12 @@ Inputs: r0: inpAddr: address of v1 to be examined.
 	            0 indicates values are unsigned
 	r2: size: number of bytes for each input value.
                   Valid values: 1, 2, 4
-Outputs: r0: if neither input value is 0, return any NON-ZERO
-             value in r0.
-             If either input value is 0, return 0 in r0
+Outputs: r0: If either input value is 0, return -1 in r0
+             If neither input value is 0, and a swap was
+             made, return 1.
+             If neither input value is 0, and a swap was
+             NOT made, return 0.
+             
          Memory: if v1>v2, swap v1 and v2.
                  Else, if v1 or v2 is 0, or if v2 >= v1
                  do not modify values in memory.
@@ -99,9 +102,8 @@ function description:
     The values are sorted "in-place" (i.e. upon returning
     to the caller, the first element of the sorted array 
     is located at startAddr)
-    The function returns the address of the first sorted
-    element in r0. Since the elements are sorted in-place
-    this means that r0 will contain startAddr
+    The function returns the ttal number of swaps that were
+    required in r0. 
     
          
 Inputs: r0: startAddr: address of first value in unsorted 
@@ -112,7 +114,7 @@ Inputs: r0: startAddr: address of first value in unsorted
 	            0 indicates values are unsigned
 	r2: size: number of bytes for each input value.
                   Valid values: 1, 2, 4
-Outputs: r0: location of first element in sorted array
+Outputs: r0: number of swaps required to sort the array
          Memory: The original input values will be
                  sorted and stored in memory starting
 		 at mem location startAddr

@@ -37,6 +37,9 @@
 
 static uint8_t txBuffer[MAX_PRINT_LEN] = {0};
 
+// declare an array that can hold the max num of largest-sized elements
+static uint32_t goodSortedArray[MAX_SORT_ARRAY_SIZE];
+
 
 static char * pass = "PASS";
 static char * fail = "FAIL";
@@ -137,7 +140,7 @@ static int32_t getLength(void *pResult,int32_t size)
     uint16_t *hwPtr = (uint16_t *)pResult; // half-word ptr
     uint32_t *wPtr = (uint32_t *)pResult;  // word ptr
     int32_t len = 0;
-    if (size == 1)
+    if (size == 1) // bytes
     {
         while(*bPtr++)
         {
@@ -149,7 +152,7 @@ static int32_t getLength(void *pResult,int32_t size)
             }
         }
     }
-    else if (size == 2)
+    else if (size == 2) // half-words
     {
         while(*hwPtr++)
         {
@@ -161,7 +164,7 @@ static int32_t getLength(void *pResult,int32_t size)
             }
         }
     }
-    else if (size == 4)
+    else if (size == 4)  // words
     {
         while(*wPtr++)
         {
@@ -204,31 +207,6 @@ static int32_t check(int32_t in1,
     }    
     return retVal;
 }
-
-
-
-/* ************************************************************************** */
-/* ************************************************************************** */
-// Section: Interface Functions                                               */
-/* ************************************************************************** */
-/* ************************************************************************** */
-
-/*  A brief description of a section can be given directly below the section
-    banner.
- */
-
-// *****************************************************************************
-
-/** 
-  @Function
-    int ExampleInterfaceFunctionName ( int param1, int param2 ) 
-
-  @Summary
-    Brief one-line description of the function.
-
-  @Remarks
-    Refer to the example_file.h interface header for function usage details.
- */
 
 static int32_t copyArray(void *inpArr, void *outArr, int32_t elementSize)
 {
@@ -401,6 +379,9 @@ static int32_t sortArray(void *inpArr, int32_t sign, int32_t elementSize)
     }
     return numSwaps;
 }
+
+
+
 // return non-zero if arrays don't match
 static int32_t compareArrays(void *expArr,
         void *testArr,
@@ -518,13 +499,54 @@ static int32_t calcExpectedValues(
 
 
 
-void testResult(int testNum, 
-                void *inpArr, // copy of unsorted input array sent to asm
-                void * expectedResultAddr, // pointer to sorted output arr from asm
-                void * pResult, // ptr returned by asm
+/* ************************************************************************** */
+/* ************************************************************************** */
+// Section: Interface Functions                                               */
+/* ************************************************************************** */
+/* ************************************************************************** */
+
+/*  A brief description of a section can be given directly below the section
+    banner.
+ */
+
+// *****************************************************************************
+
+/** 
+  @Function
+    int ExampleInterfaceFunctionName ( int param1, int param2 ) 
+
+  @Summary
+    Brief one-line description of the function.
+
+  @Remarks
+    Refer to the example_file.h interface header for function usage details.
+ */
+// function used to test sort functionality of student's asmSwap implementation
+// 
+void testAsmSwap(int testNum, 
+        char *desc, // optional description of test for printout
+        void * v1,
+        void * v2,
+        int32_t sign, // 1 ==  signed, 0 == unsigned
+        int32_t elementSize,  // valid values 1,2,4 bytes
+        int32_t* passCnt,
+        int32_t* failCnt,
+        volatile bool * txComplete)
+{
+    // TODO
+}
+
+
+
+void testAsmSort(int testNum, 
+                char *desc, // optional description of test for printout
+                void *inpArr, // unmodified copy of unsorted input array sent to asm
+                // next ptr is where a copy of the unsorted test case input was made
+                // The asm code is supposed to sort them in-place at this same location
+                void * pResult,
                 int32_t sign, // whether inp arr was signed or unsigned
-                int32_t size, // num butes for each element in array: 1,2, or 4
-                void *pGood, //ptr where asm was told to get input and store output
+                int32_t size, // num bytes for each element in array: 1,2, or 4
+                int32_t numSwaps, // num swaps reported by asmSort to order the input array
                 int32_t* passCnt,
                 int32_t* failCnt,
                 volatile bool * txComplete)
