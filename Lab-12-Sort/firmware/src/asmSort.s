@@ -64,7 +64,7 @@ asmSwap:
 
     
 /********************************************************************
-function name: admSort(startAddr,signed,size)
+function name: asmSort(startAddr,signed,size)
 function description:
     Sorts value in an array from lowest to highest.
     The end of the input array is marked by a value
