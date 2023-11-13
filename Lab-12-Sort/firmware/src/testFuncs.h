@@ -67,10 +67,6 @@ extern "C" {
      */
 // #define EXAMPLE_CONSTANT 0
 
-
-#define MAX_SORT_LEN 10  // excludes trailing 0, so max array size is this + 1
-#define MAX_SORT_ARRAY_SIZE ((MAX_SORT_LEN+1))
-
     // *****************************************************************************
     // *****************************************************************************
     // Section: Data Types
@@ -170,8 +166,9 @@ typedef struct _expectedValues
 // 
 void testAsmSwap(int testNum, 
         char *desc, // optional description of test for printout
-        void * v1,
+        const void * v1,
         void * v2,
+        int32_t swapResult,
         int32_t sign, // 1 ==  signed, 0 == unsigned
         int32_t elementSize,  // valid values 1,2,4 bytes
         int32_t* passCnt,
@@ -183,7 +180,7 @@ void testAsmSwap(int testNum,
 //
 //
 // function used to test functionality of student's asmSort implementation
-void testAsmSort(int testNum, 
+void testAsmSort(int32_t testNum, int32_t sortArrIndex,
                 char *desc, // optional description of test for printout
                 void *inpArr, // unmodified copy of unsorted input array sent to asm
                 // next ptr is where a copy of the unsorted test case input was made

@@ -155,6 +155,15 @@ extern "C" {
             return 3;
         }
      */
+    void printArray1(char *desc, 
+        const uint32_t* a, 
+        volatile bool *txCompletePtr);
+    
+    void printArray3(int32_t testNum, char *desc, 
+        const uint32_t* a, 
+        const uint32_t* b, 
+        const uint32_t* c, 
+        volatile bool *txCompletePtr);
 
     void printAndWait(char *txBuffer, volatile bool *txCompletePtr);
 

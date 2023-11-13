@@ -41,11 +41,16 @@ function description:
          
 Inputs: r0: inpAddr: address of v1 to be examined. 
 	             Address of v2 is: 
-                     inpAddr + size
+                     inpAddr + 4
 	r1: signed: 1 indicates values are signed, 
 	            0 indicates values are unsigned
 	r2: size: number of bytes for each input value.
                   Valid values: 1, 2, 4
+                  The values v1 and v2 are stored in
+                  the least significant bits at location
+                  inpAddr and inpAddr+4.
+                  Any bits not used in the word may be
+                  set to random values.
 Outputs: r0: If either input value is 0, return -1 in r0
              If neither input value is 0, and a swap was
              made, return 1.
@@ -54,7 +59,7 @@ Outputs: r0: If either input value is 0, return -1 in r0
              
          Memory: if v1>v2:
 			swap v1 and v2.
-                 Else, if v1 or v2 is 0, OR if v1 <= v2:
+                 Else, if v1 is 0 or v2 is 0, OR if v1 <= v2:
 			DO NOT swap values in memory.
 NOTE: definitions: "greater than" means most positive number
 ********************************************************************/     
@@ -62,6 +67,12 @@ NOTE: definitions: "greater than" means most positive number
 .type asmSwap,%function     
 asmSwap:
 
+    /* YOUR asmSwap CODE BELOW THIS LINE! VVVVVVVVVVVVVVVVVVVVV  */
+
+
+
+    /* YOUR asmSwap CODE ABOVE THIS LINE! ^^^^^^^^^^^^^^^^^^^^^  */
+    
     
 /********************************************************************
 function name: asmSort(startAddr,signed,size)
@@ -94,13 +105,13 @@ NOTE: definitions: "greater than" means most positive number
 .type asmSort,%function
 asmSort:   
 
-    /* Note to Profs: Solution used to test c code is located in Canvas:
-     *    Files -> Lab Files and Coding Examples -> Lab 11 Float Solution
+    /* Note to Profs: 
      */
 
     /* YOUR asmSort CODE BELOW THIS LINE! VVVVVVVVVVVVVVVVVVVVV  */
-    
-    
+
+
+
     /* YOUR asmSort CODE ABOVE THIS LINE! ^^^^^^^^^^^^^^^^^^^^^  */
 
    

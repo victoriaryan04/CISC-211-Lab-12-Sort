@@ -1,3 +1,4 @@
+
 /*******************************************************************************
   Main Source File
 
@@ -63,6 +64,7 @@
 #include <string.h>
 #include <float.h>
 #include "definitions.h"                // SYS function prototypes
+#include "projGlobalDefinitions.h"  // lab print funcs
 #include "printFuncs.h"  // lab print funcs
 #include "testFuncs.h"  // lab print funcs
 
@@ -73,9 +75,7 @@
 #define PERIOD_2S                               2048
 #define PERIOD_4S                               4096
 
-#define MAX_PRINT_LEN 1000
-
-
+#define NUM_ELEM_SIZES 3  // element sizes 1,2, or 4 bytes
 
 static volatile bool isRTCExpired = false;
 static volatile bool changeTempSamplingRate = false;
@@ -98,42 +98,29 @@ extern int32_t asmSwap(void *, int32_t sign, int32_t elemSize);
 extern int32_t asmSort(void *, int32_t sign, int32_t elemSize);
 
 // externs defined in the assembly file:
-extern float f1,f2,fMax;
-extern uint32_t sb1,sb2,signBitMax;
-// ERROR: exp2 is the name of a built-in C function!
-// extern int32_t exp1,exp2,expMax; // adjusted UNBIASED exponent
-extern int32_t expMax; // adjusted UNBIASED exponent
-extern uint32_t mant1,mant2,mantMax; // adjusted mantissa (hidden bit added when appropriate))
-extern int32_t biasedExp1,biasedExp2,biasedExpMax;
-extern uint32_t nanValue;
+// NONE
 
-
-// have to play games with data types to get floats to be passed in r0 and r1
-// otherwise, assy needs to use VMOV instructions to move from s registers
-// to r registers
-static uint32_t reinterpret_float(float f)
+// test cases for swap
+static int32_t swapTestCases[][2] = 
 {
-    float *pf = &f;
-    void * pv = (void *) pf;
-    uint32_t * pi = (uint32_t *) pv;
-    return *pi;
-}
+    {0x0203,0x0302},
+    {0x80000001,0x00000001},
+    {0,0},
+    {1,2},
+    {2,1}
+};
 
-static uint8_t u8TestCases[][10] = {
-    {0,0,0,0,0,0,0,0,0,0},
-    {1,2,3,4,5,6,7,8,9,0}
-}
+// test cases for sort
+static int32_t sortTestCases[][MAX_SORT_ARRAY_SIZE] = {
+    {2,1,0,6,0,1,2,3,4,5,6},
+    {9,8,7,6,0,1,2,3,4,5,6},
+    {0,0,0,0,0,0,0,0,0,0,0},
+    {32768,1,0,0x001122AA,0x001122AA,0x001122AA,0x001122AA,0x001122AA,0x001122AA,0x001122AA,0x001122AA},
+    {0x80000001,0x80011000,0x80010001,0x80011001,0x700109A0,0x7FED4000,0x60000000,0,0x11111111,0x22222222,0x33333333},
+    {1,2,3,4,5,6,7,8,9,0,0},
+    {-1,-2,-3,0,9,10,11,12,13,15}
+};
 
-static uint16_t u16TestCases[][10] = {
-    {0,0,0,0,0,0,0,0,0,0},
-    {1,2,3,4,5,6,7,8,9,0}
-}
-
-static uint32_t u32TestCases[][10] = {
-    {0,0,0,0,0,0,0,0,0,0},
-    {1,2,3,4,5,6,7,8,9,0}    
-}
-#define USING_HW 1
 
 #if USING_HW
 static void rtcEventHandler (RTC_TIMER32_INT_MASK intCause, uintptr_t context)
@@ -182,100 +169,221 @@ int main ( void )
     int32_t totalFailCount = 0;
     int32_t totalTestCount = 0;
     int32_t numTestCases = 0;
-    
-    while ( true )
-    {
-        int32_t swapTotalTestCount = 0;
-        int32_t swapTotalPassCount = 0;
-        int32_t swapTotalFailCount = 0;
-        numTestCases = sizeof(swapTestCases)/sizeof(swapTestCasses[0]);
-        for(int testCase = 0; testCase<numTestCases; ++testCase)
-        {
-            LED0_Toggle();
-            // reset the state variables for the timer and serial port funcs
-            isRTCExpired = false;
-            isUSARTTxComplete = false;
-            
-            // reset the counters for this test pass
-            passCount = 0;
-            failCount = 0;
-            
-            // Get the value for this test case
-            
-            // call the func
-            
-            // test the result
-            
-            // print the result
-            
-            // wait for the toggle timer to expire
-            while(isRTCExpired == false);
-        } // end: for (testCase = 0; ...)
-        
-        //OLD CODE!!!!!!!!!!!!!
-        if (isRTCExpired == true)
-        {
-            isRTCExpired = false;
-            
-            LED0_Toggle();
-            
-            // copy test case values to a new array
-            // TODO
-            
-            // create a sorted list for comparison
-            // TODO
-            
-            void * returnPtr = 0;
-            // call the asm function to do the sort
-            returnPtr = asmSort((void *)&u8TestCases[0][0],0,1);
-            
-            // TODO test the returned values
-            testResult(iteration,tc[iteration][0],tc[iteration][1],
-                    max,
-                    &fMax,
-                    &passCount,
-                    &failCount,
-                    &isUSARTTxComplete);
-            totalPassCount += passCount;        
-            totalFailCount += failCount;        
-            totalTestCount += failCount + passCount;        
-             ++iteration;
-            
-            if (iteration >= maxIterations)
-            {
-                break; // tally the results and end program
-            }
-            
-        }
-        /* Maintain state machines of all polled MPLAB Harmony modules. */
-    }
+    int32_t elemSizeArray[NUM_ELEM_SIZES] = {1,2,4};
 
-#if USING_HW
-    int32_t NUM_POINTS_AVAILABLE = 20
+    int32_t swapTotalTestCount = 0;
+    int32_t swapTotalPassCount = 0;
+    int32_t swapTotalFailCount = 0;
+    
+    int32_t testCaseCounter = 0;
+    
+    // test the swap func
+    numTestCases = sizeof(swapTestCases)/sizeof(swapTestCases[0]);
+    for(int32_t testCase = 0; testCase<numTestCases; ++testCase)
+    {
+        for (int32_t sign = 0; sign < 2; ++sign)
+        {
+            for (int32_t elemIndex = 0; elemIndex < NUM_ELEM_SIZES; ++elemIndex)
+            {
+                int32_t elemSize = elemSizeArray[elemIndex];
+                LED0_Toggle();
+                // reset the state variables for the timer and serial port funcs
+                isRTCExpired = false;
+                isUSARTTxComplete = false;
+
+                // reset the counters for this test pass
+                passCount = 0;
+                failCount = 0;
+
+                // Get the value for this test case
+                int32_t tcCopy[2];
+                tcCopy[0] = swapTestCases[testCase][0];
+                tcCopy[1] = swapTestCases[testCase][1];
+
+                        
+                // call the func
+                int32_t swapResult = 0;
+                swapResult = asmSwap((void *) tcCopy, sign, elemSize);
+#if VERBOSE_DEBUG                
+                snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
+                    "========= Debug:\r\n"
+                    "sign:      %ld\r\n"
+                    "elemIndex: %ld\r\n"
+                    "elemSize:  %ld\r\n"
+                    "unsorted inputs:         %ld, %ld\r\n"
+                    "sorted outputs from asm: %ld, %ld\r\n"
+                    "\r\n",
+                    sign,
+                    elemIndex,
+                    elemSize,
+                    swapTestCases[testCase][0], swapTestCases[testCase][1],
+                    tcCopy[0], tcCopy[1]); 
+                printAndWait((char*)uartTxBuffer,&isUSARTTxComplete);
+#endif
+                
+                // check the result
+                testAsmSwap(testCaseCounter,
+                        "",
+                        (void *) swapTestCases[testCase], // copy of vals sent to asm
+                        (void *) tcCopy, // asm stored sorted vals here
+                        swapResult, // -1, 0, or 1
+                        sign,
+                        elemSize,
+                        &passCount,
+                        &failCount,
+                        &isUSARTTxComplete);
+
+                ++testCaseCounter;
+                swapTotalPassCount += passCount;
+                swapTotalFailCount += failCount;
+                swapTotalTestCount += passCount + failCount;
+
+                // wait for the toggle timer to expire
+                while(isRTCExpired == false);
+            } // end -- for elem size = 1,2, or 4
+        } // end -- for sign 0 or 1
+    } // end: for (swap testCase = 0; ...)
+    
+    // Print the overall results of the swap tests        
     snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
-            "========= ALL TESTS COMPLETE!\r\n"
+            "========= asmSwap Tests Summary\r\n"
             "tests passed: %ld \r\n"
             "tests failed: %ld \r\n"
             "total tests:  %ld \r\n"
-            "score: %ld/20 points \r\n\r\n",
-            totalPassCount,
-            totalFailCount,
-            totalTestCount,
-            NUM_POINTS_AVAILABLE*totalPassCount/totalTestCount); 
+            "\r\n",
+            swapTotalPassCount,
+            swapTotalFailCount,
+            swapTotalTestCount); 
+            
+    isUSARTTxComplete = false;
+    
+    printAndWait((char*)uartTxBuffer,&isUSARTTxComplete);
+    
+    totalTestCount += swapTotalTestCount;
+    totalFailCount += swapTotalFailCount;
+    totalPassCount += swapTotalPassCount;
+    
+    // ===============================================
+    // ===============================  SORT TESTS ===
+    // ===============================================
+    
+    numTestCases = 0;
+
+    int32_t sortTotalTestCount = 0;
+    int32_t sortTotalPassCount = 0;
+    int32_t sortTotalFailCount = 0;
+    
+    testCaseCounter = 0;
+
+    numTestCases = sizeof(sortTestCases)/sizeof(sortTestCases[0]);
+    for(int32_t testCase = 0; testCase<numTestCases; ++testCase)
+    {
+        for (int32_t sign = 0; sign < 2; ++sign)
+        {
+            for (int32_t elemIndex = 0; elemIndex < NUM_ELEM_SIZES; ++elemIndex)
+            {
+                int32_t elemSize = elemSizeArray[elemIndex];
+                LED0_Toggle();
+                // reset the state variables for the timer and serial port funcs
+                isRTCExpired = false;
+                isUSARTTxComplete = false;
+
+                // reset the counters for this test pass
+                passCount = 0;
+                failCount = 0;
+                
+                // make copies of the test case array for the test funcs
+                int32_t inpArrayCopy[MAX_SORT_ARRAY_SIZE];
+                int32_t asmArrayCopy[MAX_SORT_ARRAY_SIZE];
+                for(int32_t i = 0;  i<MAX_SORT_ARRAY_SIZE; i++)
+                {
+                    inpArrayCopy[i] = sortTestCases[testCase][i];
+                    asmArrayCopy[i] = sortTestCases[testCase][i];
+                }
+                
+                int32_t asmNumSwaps = asmSort((void *)&asmArrayCopy[0],
+                                                sign,
+                                                elemSize);
+                
+                testAsmSort(testCaseCounter, testCase,
+                    "", // optional description of test for printout
+                    (void *) inpArrayCopy, // unmodified copy of unsorted input array sent to asm
+                    // next ptr is where a copy of the unsorted test case input was made
+                    // The asm code is supposed to sort them in-place at this same location
+                    (void *) asmArrayCopy,
+                    sign, // whether inp arr was signed or unsigned
+                    elemSize, // num bytes for each element in array: 1,2, or 4
+                    asmNumSwaps, // num swaps reported by asmSort to order the input array
+                    &passCount,
+                    &failCount,
+                    &isUSARTTxComplete);
+                
+                ++testCaseCounter;
+                sortTotalPassCount += passCount;
+                sortTotalFailCount += failCount;
+                sortTotalTestCount += passCount + failCount;
+
+                // wait for the toggle timer to expire
+                while(isRTCExpired == false);
+            } // end -- for elem size = 1,2, or 4
+        } // end -- for sign 0 or 1
+    } // end: for ( sort testCase = 0; ...)
+
+    
+    
+    // Print the overall results of the sort tests        
+    snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
+            "========= asmSort Tests Summary\r\n"
+            "tests passed: %ld \r\n"
+            "tests failed: %ld \r\n"
+            "total tests:  %ld \r\n"
+            "\r\n",
+            sortTotalPassCount,
+            sortTotalFailCount,
+            sortTotalTestCount); 
+            
+    isUSARTTxComplete = false;
+    
+    printAndWait((char*)uartTxBuffer,&isUSARTTxComplete);
+    
+    totalTestCount += sortTotalTestCount;
+    totalFailCount += sortTotalFailCount;
+    totalPassCount += sortTotalPassCount;
+
+    // Print the summary of all swap and sort tests
+    
+#if USING_HW
+    int32_t swapPointsMax = 12;
+    int32_t swapPoints = swapPointsMax*swapTotalPassCount/swapTotalTestCount;
+
+    int32_t sortPointsMax = 12;
+    int32_t sortPoints = sortPointsMax*sortTotalPassCount/sortTotalTestCount;
+    
+    snprintf((char*)uartTxBuffer, MAX_PRINT_LEN,
+            "========= ALL TESTS COMPLETE!\r\n"
+            "swap tests passed: %ld \r\n"
+            "swap tests failed: %ld \r\n"
+            "swap total tests:  %ld \r\n"
+            "swap score: %ld/%ld points \r\n\r\n"
+            "sort tests passed: %ld \r\n"
+            "sort tests failed: %ld \r\n"
+            "sort total tests:  %ld \r\n"
+            "sort score: %ld/%ld points \r\n\r\n"
+            "FINAL SCORE: %ld\r\n",
+            swapTotalPassCount,
+            swapTotalFailCount,
+            swapTotalTestCount,
+            sortPoints,swapPointsMax, 
+            sortTotalPassCount,
+            sortTotalFailCount,
+            sortTotalTestCount,
+            sortPoints,sortPointsMax,
+            (sortPoints+swapPoints)); 
             
     isUSARTTxComplete = false;
     
     printAndWait((char*)uartTxBuffer,&isUSARTTxComplete);
 
-#else
-            isRTCExpired = true;
-            isUSARTTxComplete = true;
-            if (iteration >= maxIterations)
-            {
-                break; // end program
-            }
-
-            continue;
 #endif
 
     
