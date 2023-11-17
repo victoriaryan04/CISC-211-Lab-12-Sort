@@ -248,6 +248,7 @@
       <itemPath>../src/testFuncs.c</itemPath>
       <itemPath>../src/testFuncs.h</itemPath>
       <itemPath>../src/asmSort.s</itemPath>
+      <itemPath>../src/projGlobalDefinitions.h</itemPath>
     </logicalFolder>
   </logicalFolder>
   <sourceRootList>
