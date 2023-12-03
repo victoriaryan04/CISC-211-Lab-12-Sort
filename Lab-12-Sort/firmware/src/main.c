@@ -112,6 +112,9 @@ static int32_t swapTestCases[][2] =
 
 // test cases for sort
 static int32_t sortTestCases[][MAX_SORT_ARRAY_SIZE] = {
+#if 1
+    {79,69,59,78,68,58,75,65,45,-1,0}, // add this test case for SPR'24
+#endif
     {2,1,0,6,0,1,2,3,4,5,6},
     {9,8,7,6,0,1,2,3,4,5,6},
     {0,0,0,0,0,0,0,0,0,0,0},
@@ -200,7 +203,16 @@ int main ( void )
                 tcCopy[0] = swapTestCases[testCase][0];
                 tcCopy[1] = swapTestCases[testCase][1];
 
-                        
+                // STUDENTS! If you need to debug a test case, change the
+                // number in the line of code below to match. Then set a
+                // breakpoint on the line between the curly braces...
+                int32_t breakForTestNum = 6;
+                if(testCaseCounter == breakForTestNum)
+                {
+                    // do nothing; set breakpoint on the following line
+                    tcCopy[0] = swapTestCases[testCase][0];
+                }
+
                 // call the func
                 int32_t swapResult = 0;
                 swapResult = asmSwap((void *) tcCopy, sign, elemSize);
@@ -300,11 +312,23 @@ int main ( void )
                     inpArrayCopy[i] = sortTestCases[testCase][i];
                     asmArrayCopy[i] = sortTestCases[testCase][i];
                 }
-                
+
+                // STUDENTS! If you need to debug a test case, change the
+                // number in the line of code below to match. Then set a
+                // on the line between the curly braces...
+                int32_t breakForTestNum = 7;
+                if(testCaseCounter == breakForTestNum)
+                {
+                    // do nothing; set breakpoint on the following line
+                    passCount = 0;
+                }
+                        
+                // call the student's asmSort function
                 int32_t asmNumSwaps = asmSort((void *)&asmArrayCopy[0],
                                                 sign,
                                                 elemSize);
                 
+                // call the test function to validate the results
                 testAsmSort(testCaseCounter, testCase,
                     "", // optional description of test for printout
                     (void *) inpArrayCopy, // unmodified copy of unsorted input array sent to asm
@@ -373,7 +397,7 @@ int main ( void )
             swapTotalPassCount,
             swapTotalFailCount,
             swapTotalTestCount,
-            sortPoints,swapPointsMax, 
+            swapPoints,swapPointsMax, 
             sortTotalPassCount,
             sortTotalFailCount,
             sortTotalTestCount,
